@@ -1,0 +1,80 @@
+## R2 - complete Junos configuration; load override terminal
+## Reviewed 2026-09-15. See README.md for installation and task verification.
+## Root password hash preserved from this router; JSON is a reference model.
+## Both lab interfaces share one zone, following Per's OSPF reference design.
+
+system {
+    host-name R2;
+    root-authentication {
+        encrypted-password "$1$4TkbZDtp$6E8C6Bg7K6gnHR31XnJjl0";
+    }
+    services {
+        ssh;
+    }
+}
+interfaces {
+    ge-0/0/2 {
+        description "Lan5 - R4 - OSPF broadcast";
+        unit 0 {
+            family inet {
+                address 10.10.10.1/28;
+            }
+        }
+    }
+    ge-0/0/1 {
+        description "Lan10 - R5 and PC1 - OSPF p2p";
+        unit 0 {
+            family inet {
+                address 10.10.12.2/28;
+            }
+        }
+    }
+}
+routing-options {
+    router-id 2.2.2.2;
+}
+protocols {
+    ospf {
+        area 0.0.0.0 {
+            interface ge-0/0/2.0 {
+                metric 1;
+            }
+            interface ge-0/0/1.0 {
+                interface-type p2p;
+                metric 10;
+            }
+        }
+    }
+}
+security {
+    zones {
+        security-zone lab {
+            host-inbound-traffic {
+                system-services {
+                    ping;
+                }
+                protocols {
+                    ospf;
+                }
+            }
+            interfaces {
+                ge-0/0/2.0;
+                ge-0/0/1.0;
+            }
+        }
+    }
+    policies {
+        from-zone lab to-zone lab {
+            policy allow-lab {
+                match {
+                    source-address any;
+                    destination-address any;
+                    application any;
+                }
+                then {
+                    permit;
+                }
+            }
+        }
+    }
+}
